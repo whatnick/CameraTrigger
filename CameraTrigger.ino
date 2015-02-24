@@ -35,7 +35,7 @@ int frameCount = 0;        // Keep track of frames triggered
 //Camera triggering settings
 unsigned long prevtriggerMillis = 0;     // will store last time camera was fired
 boolean triggering = false;
-int h_cam_delay = 500; // half of camera delay used for creating edge trigger
+int h_cam_delay = 450; // half of camera delay used for creating edge trigger
 
 void setup()
 {
@@ -110,34 +110,34 @@ void keypadEvent(KeypadEvent key){
             triggering = true;
         }
         if (key == '0') {
-          h_cam_delay = 500;
+          h_cam_delay = 450;
         }
         if (key == '1') {
-          h_cam_delay = 550;
+          h_cam_delay = 500;
         }
         if (key == '2') {
-          h_cam_delay = 600;
+          h_cam_delay = 550;
         }
         if (key == '3') {
-          h_cam_delay = 650;
+          h_cam_delay = 600;
         }
         if (key == '4') {
-          h_cam_delay = 700;
+          h_cam_delay = 650;
         }
         if (key == '5') {
-          h_cam_delay = 750;
+          h_cam_delay = 700;
         }
         if (key == '6') {
-          h_cam_delay = 800;
+          h_cam_delay = 750;
         }
         if (key == '7') {
-          h_cam_delay = 850;
+          h_cam_delay = 800;
         }
         if (key == '8') {
-          h_cam_delay = 900;
+          h_cam_delay = 850;
         }
         if (key == '9') {
-          h_cam_delay = 950;
+          h_cam_delay = 900;
         }
         break;
 
@@ -156,7 +156,7 @@ void draw(void) {
   char buf[12];
   u8g.drawStr( 0, 10, F("Aero Trigger"));
   u8g.drawStr( 0, 30, F("Speed"));
-  u8g.drawStr( 50, 30,itoa(h_cam_delay*2,buf,10));
+  u8g.drawStr( 50, 30,itoa(h_cam_delay*2+100,buf,10));
   u8g.drawStr( 0, 50, F("Frames"));
   u8g.drawStr( 50, 50,itoa(frameCount,buf,10));
 }
