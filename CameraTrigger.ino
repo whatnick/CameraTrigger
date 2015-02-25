@@ -37,7 +37,7 @@ int camState = LOW;
 volatile unsigned long frameCount = 0;        // Keep track of frames triggered
 //Camera triggering settings
 volatile boolean triggering = false;
-volatile int h_cam_delay = 500; // half of camera delay used for creating edge trigger
+volatile unsigned long h_cam_delay = 500; // half of camera delay used for creating edge trigger
 
 void setup()
 {
@@ -50,6 +50,9 @@ void setup()
   //Set Camera pin to output mode and HIGH
   pinMode(cameraPin,OUTPUT);
   digitalWrite(cameraPin,HIGH);
+  
+  Timer1.initialize(h_cam_delay*1000l);
+  Timer1.attachInterrupt(triggerCam);
   
   keypad.addEventListener(keypadEvent); // Add an event listener for this keypad
   
@@ -71,8 +74,6 @@ void loop()
   if (key){
     Serial.println(key);
   }
-  
-  delay(100);
 }
 
 void triggerCam()
@@ -80,9 +81,9 @@ void triggerCam()
   if(triggering) {
     if (camState == LOW) {
       camState = HIGH;
-      frameCount = frameCount + 1;  // increase camera frame counter
     } else {
       camState = LOW;
+      frameCount = frameCount + 1;  // increase camera frame counter
     }
     digitalWrite(cameraPin, camState);
   }
@@ -108,14 +109,19 @@ void Screen_setup() {
 void keypadEvent(KeypadEvent key){
     switch (keypad.getState()){
     case PRESSED:
-        noInterrupts();
+        
         if (key == '#') {
+            noInterrupts();
             triggering = false;
+            interrupts();
+            return;
         }
         if (key == '*') {
+            noInterrupts();
             triggering = true;
+            interrupts();
+            return;
         }
-        interrupts();
         if (key == '0') {
           h_cam_delay = 500;
         }
@@ -146,7 +152,7 @@ void keypadEvent(KeypadEvent key){
         if (key == '9') {
           h_cam_delay = 950;
         }
-        Timer1.setPeriod(h_cam_delay*1000);
+        Timer1.setPeriod(h_cam_delay*1000l);
         break;
 
     case RELEASED:
