@@ -37,7 +37,23 @@ int camState = LOW;
 volatile unsigned long frameCount = 0;        // Keep track of frames triggered
 //Camera triggering settings
 volatile boolean triggering = false;
-volatile unsigned long h_cam_delay = 500; // half of camera delay used for creating edge trigger
+volatile float cam_delay = 0.9f; // half of camera delay used for creating edge trigger
+
+void Screen_setup() {
+  // assign default color value
+  if ( u8g.getMode() == U8G_MODE_R3G3B2 ) {
+    u8g.setColorIndex(255);     // white
+  }
+  else if ( u8g.getMode() == U8G_MODE_GRAY2BIT ) {
+    u8g.setColorIndex(3);         // max intensity
+  }
+  else if ( u8g.getMode() == U8G_MODE_BW ) {
+    u8g.setColorIndex(1);         // pixel on
+  }
+  else if ( u8g.getMode() == U8G_MODE_HICOLOR ) {
+    u8g.setHiColorByRGB(255,255,255);
+  }
+}
 
 void setup()
 {
@@ -51,12 +67,10 @@ void setup()
   pinMode(cameraPin,OUTPUT);
   digitalWrite(cameraPin,HIGH);
   
-  Timer1.initialize(h_cam_delay*1000l);
+  Timer1.initialize(cam_delay*50000l);
   Timer1.attachInterrupt(triggerCam);
   
   keypad.addEventListener(keypadEvent); // Add an event listener for this keypad
-  
-  delay(3000);
 }
 
 void loop()
@@ -89,21 +103,7 @@ void triggerCam()
   }
 }
 
-void Screen_setup() {
-  // assign default color value
-  if ( u8g.getMode() == U8G_MODE_R3G3B2 ) {
-    u8g.setColorIndex(255);     // white
-  }
-  else if ( u8g.getMode() == U8G_MODE_GRAY2BIT ) {
-    u8g.setColorIndex(3);         // max intensity
-  }
-  else if ( u8g.getMode() == U8G_MODE_BW ) {
-    u8g.setColorIndex(1);         // pixel on
-  }
-  else if ( u8g.getMode() == U8G_MODE_HICOLOR ) {
-    u8g.setHiColorByRGB(255,255,255);
-  }
-}
+
 
 // Taking care of some special events.
 void keypadEvent(KeypadEvent key){
@@ -122,37 +122,54 @@ void keypadEvent(KeypadEvent key){
             interrupts();
             return;
         }
+
+        //If already triggering ignore numbers
+        if(triggering) return;
+        
+        if(cam_delay < 1.0f) cam_delay = 0.0f;
+        
         if (key == '0') {
-          h_cam_delay = 500;
+          cam_delay = cam_delay*10;
         }
         if (key == '1') {
-          h_cam_delay = 550;
+          cam_delay = (cam_delay*10)+1;
         }
         if (key == '2') {
-          h_cam_delay = 600;
+          cam_delay = (cam_delay*10)+2;
         }
         if (key == '3') {
-          h_cam_delay = 650;
+          cam_delay = (cam_delay*10)+3;
         }
         if (key == '4') {
-          h_cam_delay = 700;
+          cam_delay = (cam_delay*10)+4;
         }
         if (key == '5') {
-          h_cam_delay = 750;
+          cam_delay = (cam_delay*10)+5;
         }
         if (key == '6') {
-          h_cam_delay = 800;
+          cam_delay = (cam_delay*10)+6;
         }
         if (key == '7') {
-          h_cam_delay = 850;
+          cam_delay = (cam_delay*10)+7;
         }
         if (key == '8') {
-          h_cam_delay = 900;
+          cam_delay = (cam_delay*10)+8;
         }
         if (key == '9') {
-          h_cam_delay = 950;
+          cam_delay = (cam_delay*10)+9;
         }
-        Timer1.setPeriod(h_cam_delay*1000l);
+        
+        cam_delay = (int)(cam_delay)%100;
+
+        //Avoid setting cam_delay to 0.0f
+        if(cam_delay == 0) 
+        {
+          cam_delay = 0.9f;
+          return;
+        }
+        
+        Timer1.setPeriod(cam_delay*50000l);
+        
         break;
 
     case RELEASED:
@@ -165,19 +182,28 @@ void keypadEvent(KeypadEvent key){
 
 void draw(void) {
   unsigned long frameCopy;
-  unsigned int delayCopy;
+  float delayCopy;
   
   noInterrupts();
   frameCopy = frameCount;
-  delayCopy = h_cam_delay;
+  delayCopy = cam_delay/10.0f;
   interrupts();
   // graphic commands to redraw the complete screen should be placed here  
   u8g.setFont(u8g_font_unifont);
   //u8g.setFont(u8g_font_osb21);
-  char buf[12];
+  char buf[20];
   u8g.drawStr( 0, 10, F("Aero Trigger"));
-  u8g.drawStr( 0, 30, F("Speed"));
-  u8g.drawStr( 50, 30,itoa(delayCopy*2,buf,10));
+  u8g.drawStr( 0, 30, F("Delay"));
+  if(cam_delay<1.0f)
+  {
+    u8g.drawStr( 50, 30,F("NOT SET"));
+  }
+  else
+  {
+    u8g.setPrintPos(50,30);
+    u8g.print(delayCopy,1);
+    u8g.drawStr( 75, 30,F("s"));
+  }
   u8g.drawStr( 0, 50, F("Frames"));
   u8g.drawStr( 50, 50,itoa(frameCopy,buf,10));
 }
