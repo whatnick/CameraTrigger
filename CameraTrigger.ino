@@ -39,6 +39,9 @@ volatile unsigned long frameCount = 0;        // Keep track of frames triggered
 volatile boolean triggering = false;
 volatile float cam_delay = 0.9f; // half of camera delay used for creating edge trigger
 
+//Live battery voltage monitor
+volatile float voltage;
+
 void Screen_setup() {
   // assign default color value
   if ( u8g.getMode() == U8G_MODE_R3G3B2 ) {
@@ -57,7 +60,8 @@ void Screen_setup() {
 
 void setup()
 {
-  
+  Serial.begin(57600);
+  analogReference(INTERNAL); 
   Screen_setup();
   // make sure that the default chip select pin is set to
   // output, even if you don't use it:
@@ -75,6 +79,7 @@ void setup()
 
 void loop()
 {
+  int BatteryValue;
   //Draw on screen 
   // picture loop
   u8g.firstPage();  
@@ -88,6 +93,9 @@ void loop()
   if (key){
     Serial.println(key);
   }
+
+  BatteryValue = analogRead(A7);
+  voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
 }
 
 void triggerCam()
@@ -183,17 +191,19 @@ void keypadEvent(KeypadEvent key){
 void draw(void) {
   unsigned long frameCopy;
   float delayCopy;
+  float voltCopy;
   
   noInterrupts();
   frameCopy = frameCount;
   delayCopy = cam_delay/10.0f;
+  voltCopy = voltage;
   interrupts();
   // graphic commands to redraw the complete screen should be placed here  
   u8g.setFont(u8g_font_unifont);
   //u8g.setFont(u8g_font_osb21);
   char buf[20];
   u8g.drawStr( 0, 10, F("Aero Trigger"));
-  u8g.drawStr( 0, 30, F("Delay"));
+  u8g.drawStr( 0, 30, F("Delay:"));
   if(cam_delay<1.0f)
   {
     u8g.drawStr( 50, 30,F("NOT SET"));
@@ -204,6 +214,11 @@ void draw(void) {
     u8g.print(delayCopy,1);
     u8g.drawStr( 75, 30,F("s"));
   }
-  u8g.drawStr( 0, 50, F("Frames"));
-  u8g.drawStr( 50, 50,itoa(frameCopy,buf,10));
+  u8g.drawStr( 0, 45, F("Frames:"));
+  u8g.drawStr( 60, 45,itoa(frameCopy,buf,10));
+
+  u8g.drawStr( 0, 60, F("Bat:"));
+  u8g.setPrintPos(50,60);
+  u8g.print(voltCopy,1);
+  u8g.drawStr( 75, 60,F("V"));
 }
