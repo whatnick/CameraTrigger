@@ -6,10 +6,12 @@
  Keypad - Set Speed
  	 
  */
+#include <Keypad_I2C.h>
 #include <Keypad.h>
 #include <U8glib.h>
 #include <TimerOne.h>
 
+#define I2CADDR 0x38
 
 const byte ROWS = 4; //four rows
 const byte COLS = 3; //three columns
@@ -23,7 +25,7 @@ char keys[ROWS][COLS] = {
 byte rowPins[ROWS] = {8, 3, 4, 6}; // connect to the row pinouts of the keypad
 byte colPins[COLS] = {7, 9, 5}; // connect to the column pinouts of the keypad
 
-Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+Keypad_I2C keypad = Keypad_I2C( makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR );
 
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
