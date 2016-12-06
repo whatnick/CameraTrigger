@@ -6,26 +6,18 @@
  Keypad - Set Speed
  	 
  */
-#include <Keypad_I2C.h>
-#include <Keypad.h>
 #include <U8glib.h>
 #include <TimerOne.h>
+#include <i2ckeypad.h>
 
-#define I2CADDR 0x38
+#define ROWS 4
+#define COLS 3
 
-const byte ROWS = 4; //four rows
-const byte COLS = 3; //three columns
-char keys[ROWS][COLS] = {
-  {'1','2','3'},
-  {'4','5','6'},
-  {'7','8','9'},
-  {'*','0','#'}
-};
+// With A0, A1 and A2 of PCF8574 to ground I2C address is 0x20
+#define PCF8574_ADDR 0x38
 
-byte rowPins[ROWS] = {8, 3, 4, 6}; // connect to the row pinouts of the keypad
-byte colPins[COLS] = {7, 9, 5}; // connect to the column pinouts of the keypad
 
-Keypad_I2C keypad = Keypad_I2C( makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR );
+i2ckeypad kpd = i2ckeypad(PCF8574_ADDR, ROWS, COLS);
 
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
@@ -43,6 +35,7 @@ volatile float cam_delay = 0.9f; // half of camera delay used for creating edge 
 
 //Live battery voltage monitor
 volatile float voltage;
+bool redraw = true;
 
 void Screen_setup() {
   // assign default color value
@@ -76,7 +69,7 @@ void setup()
   Timer1.initialize(cam_delay*50000l);
   Timer1.attachInterrupt(triggerCam);
   
-  keypad.addEventListener(keypadEvent); // Add an event listener for this keypad
+  kpd.init();
 }
 
 void loop()
@@ -84,18 +77,21 @@ void loop()
   int BatteryValue;
   //Draw on screen 
   // picture loop
-  u8g.firstPage();  
-  do {
-    draw();
-  } while( u8g.nextPage() );
-  
+  if (redraw){
+    u8g.firstPage();  
+    do {
+      draw();
+    } while( u8g.nextPage() );
+    redraw = false;  //Clear flag to redraw
+  }
   // Scan for keys
-  char key = keypad.getKey();
+  char key = kpd.get_key();
   
   if (key){
-    Serial.println(key);
+    keypadEvent(key);
+    redraw=true;
   }
-
+  
   BatteryValue = analogRead(A7);
   voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
 }
@@ -110,84 +106,74 @@ void triggerCam()
       frameCount = frameCount + 1;  // increase camera frame counter
     }
     digitalWrite(cameraPin, camState);
+    //Redraw screen
+    redraw = true;
   }
 }
 
 
 
 // Taking care of some special events.
-void keypadEvent(KeypadEvent key){
-    switch (keypad.getState()){
-    case PRESSED:
-        
-        if (key == '#') {
-            noInterrupts();
-            triggering = false;
-            interrupts();
-            return;
-        }
-        if (key == '*') {
-            noInterrupts();
-            triggering = true;
-            interrupts();
-            return;
-        }
-
-        //If already triggering ignore numbers
-        if(triggering) return;
-        
-        if(cam_delay < 1.0f) cam_delay = 0.0f;
-        
-        if (key == '0') {
-          cam_delay = cam_delay*10;
-        }
-        if (key == '1') {
-          cam_delay = (cam_delay*10)+1;
-        }
-        if (key == '2') {
-          cam_delay = (cam_delay*10)+2;
-        }
-        if (key == '3') {
-          cam_delay = (cam_delay*10)+3;
-        }
-        if (key == '4') {
-          cam_delay = (cam_delay*10)+4;
-        }
-        if (key == '5') {
-          cam_delay = (cam_delay*10)+5;
-        }
-        if (key == '6') {
-          cam_delay = (cam_delay*10)+6;
-        }
-        if (key == '7') {
-          cam_delay = (cam_delay*10)+7;
-        }
-        if (key == '8') {
-          cam_delay = (cam_delay*10)+8;
-        }
-        if (key == '9') {
-          cam_delay = (cam_delay*10)+9;
-        }
-        
-        cam_delay = (int)(cam_delay)%100;
-
-        //Avoid setting cam_delay to 0.0f
-        if(cam_delay == 0) 
-        {
-          cam_delay = 0.9f;
+void keypadEvent(char key){
+      if (key == '#') {
+          noInterrupts();
+          triggering = false;
+          interrupts();
           return;
-        }
-        
-        Timer1.setPeriod(cam_delay*50000l);
-        
-        break;
+      }
+      if (key == '*') {
+          noInterrupts();
+          triggering = true;
+          interrupts();
+          return;
+      }
 
-    case RELEASED:
-        break;
+      //If already triggering ignore numbers
+      if(triggering) return;
+      
+      if(cam_delay < 1.0f) cam_delay = 0.0f;
+      
+      if (key == '0') {
+        cam_delay = cam_delay*10;
+      }
+      if (key == '1') {
+        cam_delay = (cam_delay*10)+1;
+      }
+      if (key == '2') {
+        cam_delay = (cam_delay*10)+2;
+      }
+      if (key == '3') {
+        cam_delay = (cam_delay*10)+3;
+      }
+      if (key == '4') {
+        cam_delay = (cam_delay*10)+4;
+      }
+      if (key == '5') {
+        cam_delay = (cam_delay*10)+5;
+      }
+      if (key == '6') {
+        cam_delay = (cam_delay*10)+6;
+      }
+      if (key == '7') {
+        cam_delay = (cam_delay*10)+7;
+      }
+      if (key == '8') {
+        cam_delay = (cam_delay*10)+8;
+      }
+      if (key == '9') {
+        cam_delay = (cam_delay*10)+9;
+      }
+      
+      cam_delay = (int)(cam_delay)%100;
 
-    case HOLD:
-        break;
-    }
+      //Avoid setting cam_delay to 0.0f
+      if(cam_delay == 0) 
+      {
+        cam_delay = 0.9f;
+        return;
+      }
+      
+      Timer1.setPeriod(cam_delay*50000l);
 }
 
 void draw(void) {
