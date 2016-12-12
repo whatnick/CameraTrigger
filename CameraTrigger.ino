@@ -25,8 +25,8 @@ U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
 
 // constants won't change. Used here to 
 // set pin numbers:
-const int cameraPin = 2;   //Camera toggling pin
-int camState = LOW;
+const int cameraPin = 9;   //Camera toggling pin
+int camState = LOW; //Optocoupler turns on HIGH and fires camera
 
 //Changing frame counter set by interrupt
 volatile unsigned long frameCount = 0;        // Keep track of frames triggered
@@ -36,6 +36,14 @@ volatile float cam_delay = 0.9f; // half of camera delay used for creating edge 
 
 //Live battery voltage monitor
 volatile float voltage;
+const char CH_status_print[][4]=
+{
+  "off","on ","ok ","err"
+};
+volatile unsigned char CHstatus;
+unsigned long previousMillis = 0;        // will store last time battery was checked
+const long interval = 10000;
+
 bool redraw = true;
 
 void Screen_setup() {
@@ -63,9 +71,9 @@ void setup()
   // output, even if you don't use it:
   pinMode(10, OUTPUT);
   
-  //Set Camera pin to output mode and HIGH
+  //Set Camera pin to output mode and LOW
   pinMode(cameraPin,OUTPUT);
-  digitalWrite(cameraPin,HIGH);
+  digitalWrite(cameraPin,LOW);
   
   Timer1.initialize(cam_delay*50000l);
   Timer1.attachInterrupt(triggerCam);
@@ -92,9 +100,16 @@ void loop()
     keypadEvent(key);
     redraw=true;
   }
-  
-  BatteryValue = analogRead(A7);
-  voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
+
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    //Save the battery update time
+    previousMillis = currentMillis;
+    BatteryValue = analogRead(A7);
+    voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
+    CHstatus = read_charge_status();//read the charge status
+    redraw = true;
+  }
 }
 
 void triggerCam()
@@ -102,9 +117,10 @@ void triggerCam()
   if(triggering) {
     if (camState == LOW) {
       camState = HIGH;
+      //Optocoupler triggers camera on HIGH
+      frameCount = frameCount + 1;  // increase camera frame counter
     } else {
       camState = LOW;
-      frameCount = frameCount + 1;  // increase camera frame counter
     }
     digitalWrite(cameraPin, camState);
     //Redraw screen
@@ -133,36 +149,49 @@ void keypadEvent(char key){
       if(triggering) return;
       
       if(cam_delay < 1.0f) cam_delay = 0.0f;
-      
-      if (key == '0') {
-        cam_delay = cam_delay*10;
-      }
-      if (key == '1') {
-        cam_delay = (cam_delay*10)+1;
-      }
-      if (key == '2') {
-        cam_delay = (cam_delay*10)+2;
-      }
-      if (key == '3') {
-        cam_delay = (cam_delay*10)+3;
-      }
-      if (key == '4') {
-        cam_delay = (cam_delay*10)+4;
-      }
-      if (key == '5') {
-        cam_delay = (cam_delay*10)+5;
-      }
-      if (key == '6') {
-        cam_delay = (cam_delay*10)+6;
-      }
-      if (key == '7') {
-        cam_delay = (cam_delay*10)+7;
-      }
-      if (key == '8') {
-        cam_delay = (cam_delay*10)+8;
-      }
-      if (key == '9') {
-        cam_delay = (cam_delay*10)+9;
+
+      switch(key) 
+      {
+        case '0': {
+          cam_delay = cam_delay*10;
+          break;
+        }
+        case '1': {
+          cam_delay = (cam_delay*10)+1;
+          break;
+        }
+        case '2': {
+          cam_delay = (cam_delay*10)+2;
+          break;
+        }
+        case '3': {
+          cam_delay = (cam_delay*10)+3;
+          break;
+        }
+        case '4': {
+          cam_delay = (cam_delay*10)+4;
+          break;
+        }
+        case '5': {
+          cam_delay = (cam_delay*10)+5;
+          break;
+        }
+        case '6': {
+          cam_delay = (cam_delay*10)+6;
+          break;
+        }
+        case '7': {
+          cam_delay = (cam_delay*10)+7;
+          break;
+        }
+        case '8': {
+          cam_delay = (cam_delay*10)+8;
+          break;
+        }
+        case '9': {
+          cam_delay = (cam_delay*10)+9;
+          break;
+        }
       }
       
       cam_delay = (int)(cam_delay)%100;
@@ -177,15 +206,40 @@ void keypadEvent(char key){
       Timer1.setPeriod(cam_delay*50000l);
 }
 
+unsigned char read_charge_status(void)
+{
+  unsigned char CH_Status=0;
+  unsigned int ADC6=analogRead(6);
+  if(ADC6>900)
+  {
+    CH_Status = 0;//sleeping
+  }
+  else if(ADC6>550)
+  {
+    CH_Status = 1;//charging
+  }
+  else if(ADC6>350)
+  {
+    CH_Status = 2;//done
+  }
+  else
+  {
+    CH_Status = 3;//error
+  }
+  return CH_Status;
+}
+
 void draw(void) {
   unsigned long frameCopy;
   float delayCopy;
   float voltCopy;
+  char statCopy;
   
   noInterrupts();
   frameCopy = frameCount;
   delayCopy = cam_delay/10.0f;
   voltCopy = voltage;
+  statCopy = CHstatus;
   interrupts();
   // graphic commands to redraw the complete screen should be placed here  
   u8g.setFont(u8g_font_unifont);
@@ -207,7 +261,8 @@ void draw(void) {
   u8g.drawStr( 60, 45,itoa(frameCopy,buf,10));
 
   u8g.drawStr( 0, 60, F("Bat:"));
-  u8g.setPrintPos(50,60);
+  u8g.setPrintPos(35,60);
   u8g.print(voltCopy,1);
-  u8g.drawStr( 75, 60,F("V"));
+  u8g.drawStr( 60, 60,F("V"));
+  u8g.drawStr( 80, 60, CH_status_print[statCopy]);
 }
