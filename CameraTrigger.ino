@@ -38,7 +38,7 @@ volatile float cam_delay = 0.9f; // half of camera delay used for creating edge 
 volatile float voltage;
 const char CH_status_print[][4]=
 {
-  "off","on ","ok ","err"
+  "bat","chg","ext","err"
 };
 volatile unsigned char CHstatus;
 unsigned long previousMillis = 0;        // will store last time battery was checked
@@ -79,11 +79,14 @@ void setup()
   Timer1.attachInterrupt(triggerCam);
   
   kpd.init();
+  //Initialize Battery values
+  Bat_init();
 }
 
 void loop()
 {
   int BatteryValue;
+  
   //Draw on screen 
   // picture loop
   if (redraw){
@@ -128,6 +131,12 @@ void triggerCam()
   }
 }
 
+void Bat_init()
+{
+  int BatteryValue = analogRead(A7);
+  voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
+  CHstatus = read_charge_status();//read the charge status
+}
 
 
 // Taking care of some special events.
