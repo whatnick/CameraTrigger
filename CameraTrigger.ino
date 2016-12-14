@@ -42,7 +42,7 @@ const char CH_status_print[][4]=
 };
 volatile unsigned char CHstatus;
 unsigned long previousMillis = 0;        // will store last time battery was checked
-const long interval = 10000;
+const long interval = 1000;
 
 bool redraw = true;
 
