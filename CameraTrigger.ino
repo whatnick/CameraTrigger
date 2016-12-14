@@ -41,6 +41,16 @@ volatile float cam_delay = 0.9f; // half of camera delay used for creating edge 
 
 //Live battery voltage monitor
 volatile float voltage;
+const char CH_status_print[][4]=
+{
+  "bat","chg","ext","err"
+};
+volatile unsigned char CHstatus;
+unsigned long previousMillis = 0;        // will store last time battery was checked
+const long interval = 1000;
+
+bool redraw = true;
+
 
 void Screen_setup() {
   // assign default color value
@@ -82,20 +92,30 @@ void loop()
   int BatteryValue;
   //Draw on screen 
   // picture loop
-  u8g.firstPage();  
-  do {
-    draw();
-  } while( u8g.nextPage() );
+  if (redraw){
+      u8g.firstPage();  
+      do {
+        draw();
+      } while( u8g.nextPage() );
+      redraw = false;  //Clear flag to redraw
+  }
   
   // Scan for keys
   char key = keypad.getKey();
   
   if (key){
-    Serial.println(key);
+    redraw=true;
   }
 
-  BatteryValue = analogRead(A7);
-  voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    //Save the battery update time
+    previousMillis = currentMillis;
+    BatteryValue = analogRead(A7);
+    voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
+    CHstatus = read_charge_status();//read the charge status
+    redraw = true;
+  }
 }
 
 void triggerCam()
@@ -108,9 +128,17 @@ void triggerCam()
       frameCount = frameCount + 1;  // increase camera frame counter
     }
     digitalWrite(cameraPin, camState);
+    //Redraw screen
+    redraw = true;
   }
 }
 
+void Bat_init()
+{
+  int BatteryValue = analogRead(A7);
+  voltage = BatteryValue * (1.1 / 1024)* (10+2)/2;  //Voltage devider
+  CHstatus = read_charge_status();//read the charge status
+}
 
 
 // Taking care of some special events.
@@ -188,15 +216,40 @@ void keypadEvent(KeypadEvent key){
     }
 }
 
+unsigned char read_charge_status(void)
+{
+  unsigned char CH_Status=0;
+  unsigned int ADC6=analogRead(6);
+  if(ADC6>900)
+  {
+    CH_Status = 0;//sleeping
+  }
+  else if(ADC6>550)
+  {
+    CH_Status = 1;//charging
+  }
+  else if(ADC6>350)
+  {
+    CH_Status = 2;//done
+  }
+  else
+  {
+    CH_Status = 3;//error
+  }
+  return CH_Status;
+}
+
 void draw(void) {
   unsigned long frameCopy;
   float delayCopy;
   float voltCopy;
+  char statCopy;
   
   noInterrupts();
   frameCopy = frameCount;
   delayCopy = cam_delay/10.0f;
   voltCopy = voltage;
+  statCopy = CHstatus;
   interrupts();
   // graphic commands to redraw the complete screen should be placed here  
   u8g.setFont(u8g_font_unifont);
@@ -218,7 +271,8 @@ void draw(void) {
   u8g.drawStr( 60, 45,itoa(frameCopy,buf,10));
 
   u8g.drawStr( 0, 60, F("Bat:"));
-  u8g.setPrintPos(50,60);
+  u8g.setPrintPos(35,60);
   u8g.print(voltCopy,1);
-  u8g.drawStr( 75, 60,F("V"));
+  u8g.drawStr( 60, 60,F("V"));
+  u8g.drawStr( 80, 60, CH_status_print[statCopy]);
 }
