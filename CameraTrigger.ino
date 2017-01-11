@@ -3,9 +3,10 @@
  
  Triggers camera using remote cord port by pulling output low.
  OLED - Output frame count (https://github.com/olikraus/u8glib)
- Keypad - Set Speed (https://github.com/whatnick/i2ckeypad)
+ I2C Keypad - Set Speed (https://github.com/joeyoung/arduino_keypads)
  TimeOne - Accurate timing of pulses (https://github.com/PaulStoffregen/TimerOne)
- 	 
+ Custom PCB - https://github.com/whatnick/CameraTrigger_PCB
+  
  */
 #include <U8glib.h>
 #include <TimerOne.h>
