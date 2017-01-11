@@ -9,16 +9,26 @@
  */
 #include <U8glib.h>
 #include <TimerOne.h>
-#include <i2ckeypad.h>
-
-#define ROWS 4
-#define COLS 3
 
 // With A0, A1 and A2 of PCF8574 to ground I2C address is 0x20
-#define PCF8574_ADDR 0x38
+#include <Keypad_I2C.h>
+#include <Keypad.h>
+#define I2CADDR 0x20
 
+const byte ROWS = 4; //four rows
+const byte COLS = 3; //three columns
+char keys[ROWS][COLS] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
 
-i2ckeypad kpd = i2ckeypad(PCF8574_ADDR, ROWS, COLS);
+// Digitran keypad, bit numbers of PCF8574 i/o port
+byte rowPins[ROWS] = {5, 0, 1, 3}; // connect to the row pinouts of the keypad
+byte colPins[COLS] = {4, 6, 2}; // connect to the column pinouts of the keypad
+
+Keypad_I2C kpd( makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR, PCF8574 );
 
 
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
@@ -78,7 +88,7 @@ void setup()
   Timer1.initialize(cam_delay*50000l);
   Timer1.attachInterrupt(triggerCam);
   
-  kpd.init();
+  kpd.begin();
   //Initialize Battery values
   Bat_init();
 }
@@ -97,7 +107,7 @@ void loop()
     redraw = false;  //Clear flag to redraw
   }
   // Scan for keys
-  char key = kpd.get_key();
+  char key = kpd.getKey();
   
   if (key){
     keypadEvent(key);
