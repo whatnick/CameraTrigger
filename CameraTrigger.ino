@@ -35,8 +35,9 @@ Keypad_I2C kpd( makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR, PCF8574
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
 
 // constants won't change. Used here to 
-// set pin numbers:
-const int cameraPin = 9;   //Camera toggling pin
+//Camera toggling pins
+const byte NUM_PINS = 2;
+const int cameraPins[NUM_PINS] = {2,9};   
 int camState = LOW; //Optocoupler turns on HIGH and fires camera
 
 //Changing frame counter set by interrupt
@@ -83,8 +84,11 @@ void setup()
   pinMode(10, OUTPUT);
   
   //Set Camera pin to output mode and LOW
-  pinMode(cameraPin,OUTPUT);
-  digitalWrite(cameraPin,LOW);
+  for(int i=0;i<NUM_PINS;i++)
+  {
+    pinMode(cameraPins[i],OUTPUT);
+    digitalWrite(cameraPins[i],LOW);
+  }
   
   Timer1.initialize(cam_delay*50000l);
   Timer1.attachInterrupt(triggerCam);
@@ -136,7 +140,10 @@ void triggerCam()
     } else {
       camState = LOW;
     }
-    digitalWrite(cameraPin, camState);
+    for(int i=0;i<NUM_PINS;i++)
+    {
+      digitalWrite(cameraPins[i], camState);
+    }    
     //Redraw screen
     redraw = true;
   }
